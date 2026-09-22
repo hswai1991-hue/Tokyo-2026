@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="h-full bg-slate-900">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>東京‧輕井澤‧草津 2026 行程</title>
+
+  <!-- PWA Meta Tags -->
+  <meta name="theme-color" content="#0f172a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="東京行程2026">
+  <link rel="apple-touch-icon" href="https://img.icons8.com/emoji/192/japan-emoji.png">
+
+  <!-- Manifest Dynamic Generation -->
+  <link rel="manifest" id="manifest-placeholder">
+
+  <!-- Tailwind CSS & FontAwesome Icons -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Vue 3 CDN -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0f9ff',
+              100: '#e0f2fe',
+              500: '#0284c7',
+              600: '#0369a1',
+              900: '#0c4a6e',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    .tab-active {
+      background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+      box-shadow: 0 4px 14px 0 rgba(2, 132, 199, 0.39);
+    }
+
+    /* 允許全頁及備註區域可自由長按選擇文字與複製 */
+    body, p, span, div {
+      -webkit-user-select: text;
+      user-select: text;
+    }
+
+    button, a {
+      -webkit-user-select: none;
+      user-select: none;
+    }
+  </style>
+</head>
+<body class="h-full text-slate-100 font-sans antialiased selection:bg-sky-500 selection:text-white">
+
+  <div id="app" class="min-h-full flex flex-col max-w-md mx-auto bg-slate-900 border-x border-slate-800 shadow-2xl relative pb-12">
+
+    <!-- 頂部 Header & 狀態列 -->
+    <header class="sticky top-0 z-50 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 pt-3 px-4 pb-2">
+      <div class="flex items-center justify-between mb-3">
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-xl font-bold tracking-tight text-white">東京‧輕井澤‧草津</h1>
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              離線可用
+            </span>
+          </div>
+          <p class="text-xs text-slate-400">17 OCT - 24 OCT 2026 (8 Days)</p>
+        </div>
+
+        <button v-if="deferredPrompt" @click="installPWA" class="flex items-center gap-1.5 px-2.5 py-1.5 bg-sky-500 hover:bg-sky-600 active:scale-95 text-white text-xs font-semibold rounded-lg shadow-md transition-all">
+          <i class="fa-solid font-black fa-download"></i>
+          安裝 App
+        </button>
+      </div>
+
+      <!-- 頂部日期頁籤導覽 -->
+      <nav class="flex space-x-2 overflow-x-auto no-scrollbar py-1 -mx-4 px-4">
+        <button
+          v-for="(day, index) in itineraryData"
+          :key="day.id"
+          @click="selectDay(index)"
+          :class="[
+            'flex-shrink-0 flex flex-col items-center justify-center px-3.5 py-1.5 rounded-xl text-xs transition-all duration-200 border',
+            activeDayIndex === index
+              ? 'tab-active border-sky-400/50 text-white font-bold scale-[1.02]'
+              : 'bg-slate-800/80 border-slate-700/60 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+          ]"
+        >
+          <span class="text-[11px] leading-tight opacity-90 tracking-tight">{{ day.date }}</span>
+          <span class="text-xs font-extrabold leading-tight tracking-wide mt-0.5">{{ 'Day ' + (index + 1) }}</span>
+        </button>
+      <\nav>
+    </header>
+
+    <!-- 主體行程內容 -->
+    <main class="flex-1 px-4 py-4">
+
+      <!-- 當天標題與概要資訊 -->
+      <div class="mb-5 bg-gradient-to-r from-slate-800/80 to-slate-800/40 p-3.5 rounded-2xl border border-slate-700/50 flex justify-between items-center">
+        <div>
+          <div class="text-xs font-bold text-sky-400 tracking-wider uppercase mb-0.5">DAY {{ currentDay.id }} SUMMARY</div>
+          <div class="text-base font-bold text-white">{{ currentDay.title }}</div>
+        </div>
+        <div class="text-right">
+          <span class="text-xs font-mono bg-slate-900/60 px-2.5 py-1 rounded-lg text-slate-300 border border-slate-700/50">
+            {{ currentDay.items.length }} 個行程
+          </span>
+        </div>
+      </div>
+
+      <!-- 行程列表 (時間靠左靠緊無空隙) -->
+      <div class="space-y-4">
+
+        <div
+          v-for="(item, idx) in currentDay.items"
+          :key="idx"
+          class="flex items-start gap-2.5"
+        >
+          <!-- 左側：靠左對齊無多餘留白時間區塊 -->
+          <div class="w-auto shrink-0 pt-0.5 text-left">
+            <div class="text-base font-black font-mono text-sky-400 leading-tight tracking-tight">
+              {{ formatTime(item.time).primary }}
+            </div>
+            <div v-if="formatTime(item.time).secondary" class="text-xs font-mono font-bold text-sky-300/80 mt-1">
+              {{ formatTime(item.time).secondary }}
+            </div>
+          </div>
+
+          <!-- 右側：行程卡片 -->
+          <div class="flex-1 bg-slate-800/90 rounded-2xl p-3.5 border border-slate-700/70 shadow-lg hover:border-slate-600 transition-all duration-200">
+
+            <!-- 分類徽章 (Badge) -->
+            <div class="flex items-center justify-between mb-2">
+              <span :class="[
+                'px-2.5 py-0.5 rounded-full text-[11px] font-bold border flex items-center gap-1',
+                getBadgeConfig(item.type).badgeStyle
+              ]">
+                <i :class="['text-[10px]', getBadgeConfig(item.type).icon]"></i>
+                {{ getBadgeConfig(item.type).label }}
+              </span>
+            </div>
+
+            <!-- 卡片標題 -->
+            <h3 class="text-sm font-bold text-slate-100 leading-snug mb-1.5">
+              {{ item.title }}
+            </h3>
+
+            <!-- 地點資訊 -->
+            <div v-if="item.location" class="flex items-start gap-1.5 text-xs text-slate-400 mb-2">
+              <i class="fa-solid fa-location-dot text-slate-500 mt-0.5 shrink-0"></i>
+              <span class="line-clamp-1 select-text">{{ item.location }}</span>
+            </div>
+
+            <!-- 備註/詳細說明 -->
+            <p v-if="item.note" class="text-xs text-slate-200 bg-slate-900/60 p-2.5 rounded-xl border border-slate-700/40 whitespace-pre-line leading-relaxed mb-2.5 select-text cursor-text">
+              {{ item.note }}
+            </p>
+
+            <!-- 圖片顯示區塊 -->
+            <div v-if="item.images && item.images.length > 0" class="mb-2.5 grid grid-cols-2 gap-2">
+              <img
+                v-for="(img, imgIdx) in item.images"
+                :key="imgIdx"
+                :src="img"
+                @click="openModal(img)"
+                alt="行程圖片"
+                class="w-full h-24 object-cover rounded-xl border border-slate-700/60 hover:opacity-90 transition-opacity cursor-pointer"
+              />
+            </div>
+
+            <!-- 連結/文件區塊 -->
+            <div v-if="item.links && item.links.length > 0" class="flex flex-wrap gap-2 pt-2 border-t border-slate-700/40">
+              <a
+                v-for="(lnk, lIdx) in item.links"
+                :key="lIdx"
+                :href="lnk.url"
+                target="_blank"
+                rel="noopener"
+                class="inline-flex items-center gap-1.5 text-xs font-medium text-sky-400 hover:text-sky-300 bg-sky-500/10 hover:bg-sky-500/20 px-2.5 py-1 rounded-lg border border-sky-500/20 transition-colors"
+              >
+                <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                {{ lnk.text || '檢視連結' }}
+              </a>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+    </main>
+
+    <!-- 圖片點擊放大 Modal 彈窗 -->
+    <div
+      v-if="modalImage"
+      @click="closeModal"
+      class="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 backdrop-blur-sm cursor-zoom-out"
+    >
+      <img :src="modalImage" class="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl" />
+      <button class="absolute top-4 right-4 text-white text-xl bg-slate-800/80 w-10 h-10 rounded-full flex items-center justify-center">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <!-- 底部資訊 -->
+    <footer class="mt-8 py-4 text-center text-xs text-slate-500 border-t border-slate-800">
+      <p>2026 Tokyo Trip Planner • PWA Ready</p>
+    </footer>
+
+  </div>
+
+  <script>
+    // PWA Manifest 動態生成
+    const manifestData = {
+      name: "東京‧輕井澤‧草津 2026",
+      short_name: "東京行程2026",
+      start_url: "./",
+      display: "standalone",
+      background_color: "#0f172a",
+      theme_color: "#0f172a",
+      icons: [{
+        src: "https://img.icons8.com/emoji/192/japan-emoji.png",
+        sizes: "192x192",
+        type: "image/png"
+      }]
+    };
+    const stringManifest = JSON.stringify(manifestData);
+    const blob = new Blob([stringManifest], {type: 'application/json'});
+    const manifestURL = URL.createObjectURL(blob);
+    document.getElementById('manifest-placeholder').setAttribute('href', manifestURL);
+
+    // Vue 3 應用程式邏輯
+    const { createApp, ref, computed, onMounted } = Vue;
+
+    createApp({
+      setup() {
+        const activeDayIndex = ref(0);
+        const deferredPrompt = ref(null);
+        const modalImage = ref(null);
+
+        const itineraryData = ref([
+          {
+            id: 1,
+            title: '東京 晴空塔',
+            date: '10/17 (SAT)',
+            items: [
+              {
+                time: '10:35 - 16:05',
+                type: 'flight',
+                title: '航班 - UO870 (HKG ➔ NRT)',
+                note: '旅程總時長︰4h 30m | 2 x 20kg 寄艙行李\n訂單編號︰ACKP3X | 提前選座 : 11C, 11B',
+                images: [],
+                links: [
+                  { text: '機票確認單 PDF', url: 'https://drive.google.com/file/d/17-Q8CG27voUjCPIqial0flCdCCwK6Xtg/view?usp=drive_link' },
+                  { text: 'Visit Japan Web', url: 'https://vjw-lp.digital.go.jp/' }
+                ]
+              },
+              {
+                time: '16:05 - 17:52',
+                type: 'spot',
+                title: '機場過關 & 領取ＪＲ車票',
+                note: '入境與提領行李，如有時間可以領取ＪＲ車票(需要信用卡)',
+                images: [],
+                links: [
+                  { text: '新幹線 JR 憑證', url: 'https://drive.google.com/file/d/1TaIyqLv4TO4Gv6PF6hb_AJaj2TfGAkYi/view?usp=drive_link' }
+                ]
+              },
+              {
+                time: '17:52 - 19:00',
+                type: 'transport',
+                title: '機場第二航廈 ➔ 京成里士滿酒店東京押上',
+                note: '京成成田スカイアクセス線アクセス特急 (1號月台上車) ➔ 押上[スカイツリー前] (IC運費: 1,194円)',
+                images: ['pic1.png'],
+                links: [
+                  {text: 'Google 路線', url: 'https://maps.app.goo.gl/ZsC96s676pAAbgTw5'},
+                  {text: '機場第二航廈', url: 'https://maps.app.goo.gl/gTTeKVE1VxnJz4AN9'},
+                  {text: '京成里士滿酒店東京押上', url: 'https://maps.app.goo.gl/iDmcwv6My1jsM8rS8'}
+                ]
+              },
+              {
+                time: '19:00 - 19:30',
+                type: 'hotel',
+                title: 'Check-in: 京成里士滿酒店東京押上',
+                location: '1 Chome-8-23 Oshiage, Sumida City, Tokyo 131-0045日本',
+                note: 'Keisei Richmond Hotel Tokyo Oshiage\nTel: +81 3-6658-5991',
+                images: [],
+                links: [
+                  { text: '飯店訂房憑證', url: 'https://drive.google.com/file/d/1CknPD89taqjBUM_dLVi5sddEpYNOMR_1/view?usp=drive_link' }
+                ]
+              },
+              {
+                time: '19:30 - 20:30',
+                type: 'spot',
+                title: '晴空塔 散策',
+                location: '東京晴空塔',
+                note: '周邊逛街 Shopping',
+                images: [],
+                links: [
+                  { text: '【官方】東京晴空塔', url: 'https://zh-hant.tokyo-skytree.jp/'}
+                ]
+              },
+              {
+                time: '20:30 - 21:30',
+                type: 'food',
+                title: '晚餐：藏壽司 晴空塔押上站前店',
+                note: '營業時間：11:00–23:00 (Global Flagship Store 2F)',
+                images: [],
+                links: [
+                  { text: '藏壽司', url: 'https://maps.app.goo.gl/bpzZqTSzFe4v6AYW7'}
+                ]
+              },
+              {
+                time: '21:30 - 22:30',
+                type: 'shopping',
+                title: 'Life Supermarket 補給',
+                note: '營業時間 (Mon to Sun): 09:30–00:00',
+                images: [],
+                links: [
+                  { text: 'Life Supermarket', url: 'https://maps.app.goo.gl/9z6xqg7edupJ6cbV8'}
+                ]
+              },
+              {
+                time: '22:30-23:00',
+                type: 'shopping',
+                title: '便利店',
+                note: '營業時間 (Mon to Sun): 24HR',
+                images: [],
+                links: [
+                  {text: '7-Eleven 押上駅前店', url: 'https://maps.app.goo.gl/tb4NnYfKEKZmeLWH7'},
+                  {text: 'FamilyMart 業平三丁目店', url: 'https://maps.app.goo.gl/9ANmgq8pMicJpXBU7'},
+                  {text: '7-Eleven 墨田業平2丁目店', url: 'https://maps.app.goo.gl/h6Pgp4RKc2qCDnMx5'}
+                ]
+              }
+            ]
+          },
+          {
+            id: 2,
+            title: '輕井澤 星野度假村',
+            date: '10/18 (SUN)',
+            items: [
+              {
+                time: '08:36 - 08:54',
+                type: 'transport',
+                title: '東京Schole里士滿酒店Premier ➔ 上野',
+                note: '押上 ➔ 淺草 ➔ 上野',
+                images: ['pic2.png'],
+                links: [
+                  {text: 'Google 路線', url: 'https://maps.app.goo.gl/QeACtiYCyehM22bW7'},
+                  {text: '上野', url: 'https://maps.app.goo.gl/5hbc8aYgFTCw5YNf8'}
+                ]
+              },
+              {
+                time: '08:54 - 09:50',
+                type: 'food',
+                title: '上野站 買早餐',
+                note: '準備新幹線上享用, 如未領取ＪＲ車票(需要信用卡)/n取票代碼:20362479828521238',
+                images: [],
+                links: [
+                  { text: '新幹線 JR 憑證', url: 'https://drive.google.com/file/d/1TaIyqLv4TO4Gv6PF6hb_AJaj2TfGAkYi/view?usp=drive_link' }
+                ]
+              },
+              {
+                time: '09:50 - 11:02',
+                type: 'transport',
+                title: '上野 ➔ 輕井澤 (北陸新幹線-淺間 607號)',
+                note: '19號月台, 長野行\n10號車 20番 D,E席',
+                images: ['pic3.png'],
+                links: [
+                  { text: 'Google 路線', url: 'https://maps.app.goo.gl/ssNP1jU4fbLtVBmo9' }
+                ]
+              },
+              {
+                time: '11:02 - 11:46',
+                type: 'shopping',
+                title: '輕井澤 ➔ DELiCiA 輕井澤店',
+                note: '移動至超市,DELiCiA 輕井澤店 採買,\n營業時間：09:00–23:00',
+                images: [],
+                links: [
+                  { text: 'Google 路線', url: 'https://maps.app.goo.gl/ssNP1jU4fbLtVBmo9' },
+                  { text: 'DELiCiA', url: 'https://maps.app.goo.gl/6wJrxxGgwnprAAkcA' }
+                ]
+              },
+              {
+                time: '11:46 - 12:06',
+                type: 'transport',
+                title: 'DELiCiA ➔ 星野度假村 BEB5 輕井澤',
+                note: '搭乘BUS/ TAXI 移動',
+                images: [],
+                links: [
+                  { text: 'Google 路線 Bus', url: 'https://maps.app.goo.gl/ssNP1jU4fbLtVBmo9' },
+                  { text: '星野度假村 BEB5 輕井澤', url: 'https://maps.app.goo.gl/bZDHGZpj8NZVpcku8' }
+                ]
+              },
+              {
+                time: '12:06 - 12:36',
+                type: 'hotel',
+                title: 'BEB5 寄放行李',
+                note: 'Check in 時間為 15:00-00:00\n(空檔可順遊 石之教堂,輕井澤高原教會 10:00–17:00)',
+                images: [],
+                links: [
+                  { text: '星野度假村 BEB5 輕井澤', url: 'https://maps.app.goo.gl/ZyWsZBgcGpAZU4Ug9' }
+                ]
+              },
+              {
+                time: '12:36 - 14:00',
+                type: 'food',
+                title: '午餐：川上庵 蕎麥麵',
+                note: '步行約 8 分鐘 | 營業時間：10:00–22:00',
+                images: [],
+                links: [
+                  { text: '川上庵  蕎麥麵', url: 'https://maps.app.goo.gl/uu87i41ako3m5u5o8' }
+                ]
+              },
+              {
+                time: '14:00 - 15:00',
+                type: 'food',
+                title: '榆樹街小鎮 Harvest Nagai Farm 冰淇淋',
+                note: '品嚐意式冰淇淋',
+                images: [],
+                links: [
+                  { text: '意式冰淇淋', url: 'https://maps.app.goo.gl/mPzvccZ2j5rBoQjW7' } ,
+                  { text: '榆樹街小鎮', url: 'https://www.hoshino-area.jp/' }
+                ]
+              },
+              {
+                time: '15:00 - 16:00',
+                type: 'spot',
+                title: 'Ikaru Cafe 休息',
+                note: '步行約 9 分鐘,營業時間：10:00–16:00',
+                images: [],
+                links: [
+                  { text: 'Ikaru Cafe', url: 'https://maps.app.goo.gl/evzG49JusfBuJjw16' }
+                ]
+              },
+              {
+                time: '16:00 - 16:30',
+                type: 'hotel',
+                title: '搭乘 Shuttle Bus 辦理入住 BEB5 輕井澤',
+                note: '正式辦理入住手續\n有時間去Stone ChurchKaruizawa Kogen Church 10:00–17:00',
+                images: [],
+                links: [
+                  { text: 'BEB5 輕井澤', url: 'https://drive.google.com/file/d/1OIZzXuVGPA1MXIsi-ST01swzfMfOaFz_/view?usp=drive_link' },
+                  { text: 'Stone Church', url: 'https://maps.app.goo.gl/AWTaodEmwsFKyhnP9' },
+                  { text: 'Karuizawa Kogen Church', url: 'https://maps.app.goo.gl/ZyWsZBgcGpAZU4Ug9' }
+                ]
+              },
+              {
+                time: '16:30 - 18:00',
+                type: 'spot',
+                title: '星野溫泉 蜻蜓之湯 (Tonbo-no-yu)',
+                note: '搭乘 Shuttle Bus 前往 (最後入場 21:15)',
+                images: [],
+                links: [
+                  { text: '蜻蜓之湯', url: 'https://maps.app.goo.gl/cfUxD1puq8UTvWUe6' }
+                ]
+              },
+              {
+                time: '18:00 - 20:00',
+                type: 'food',
+                title: '晚餐：村民食堂 (Sonmin-Shokudo)',
+                note: '享受在地特色料理\n(順遊 7-Eleven Naka-Karuizawa)',
+                images: [],
+                links: [
+                  { text: '村民食堂', url: 'https://maps.app.goo.gl/QNzzfUt2GYePx4Px9' },
+                  { text: '7-Eleven', url: 'https://maps.app.goo.gl/qMajQoEHLRygxkoP8' }
+                ]
+              }
+            ]
+          },
+          {
+            id: 3,
+            title: '舊輕井澤 & 雲場池',
+            date: '10/19 (MON)',
+            items: [
+              {
+                time: '08:00 - 09:00',
+                type: 'food',
+                title: '早餐：Sawamura Bakery & Restaurant',
+                note: '沢村麵包店早餐,營業時間：07:00–22:00',
+                images: [],
+                links: [
+                  { text: '沢村麵包', url: 'https://maps.app.goo.gl/7o5RLXJZQRUpEmip7' }
+                ]
+              },
+              {
+                time: '09:00 - 10:30',
+                type: 'spot',
+                title: '星野溫泉 蜻蜓之湯',
+                note: '早晨泡湯體驗',
+                images: [],
+                links: [
+                  { text: '蜻蜓之湯', url: 'https://maps.app.goo.gl/7o5RLXJZQRUpEmip7' }
+                ]
+              },
+              {
+                time: '10:30 - 11:30',
+                type: 'hotel',
+                title: '返回 BEB5 輕井澤 休息',
+                note: '搭 Shuttle Bus 返回飯店整頓',
+                images: [],
+                links: [
+                  { text: 'BEB5 輕井澤', url: 'https://drive.google.com/file/d/1OIZzXuVGPA1MXIsi-ST01swzfMfOaFz_/view?usp=drive_link' }
+                ]
+              },
+              {
+                time: '11:30 - 11:53',
+                type: 'transport',
+                title: 'BEB5 輕井澤 ➔ 雲場池',
+                note: '交通移動',
+                images: [],
+                links: [
+                  { text: 'Google 路線', url: 'https://maps.app.goo.gl/ToSZChRSqjjtEhem6' },
+                  { text: '雲場池', url: 'https://maps.app.goo.gl/M8ETw67Gfi7ADGyh6' }
+                ]
+              },
+              {
+                time: '11:53 - 13:30',
+                type: 'food',
+                title: '午餐：Pyrenees (12:00 已預約)',
+                note: '已完成 BOOKING 預約',
+                images: [],
+                links: [
+                  { text: 'Pyrenees 預約', url: 'https://drive.google.com/file/d/1768AbW8aA-bkk86ivUhR-3YXKPIaoJL-/view?usp=drive_link' }
+                ]
+              },
+              {
+                time: '13:30 - 14:08',
+                type: 'spot',
+                title: '雲場池 (Kumoba Pond) 散步',
+                note: '欣賞紅葉與湖光山色',
+                images: [],
+                links: [
+                  { text: '雲場池', url: 'https://maps.app.goo.gl/M8ETw67Gfi7ADGyh6' }
+                ]
+              },
+              {
+                time: '14:08 - 14:17',
+                type: 'transport',
+                title: '雲場池 ➔ 舊輕井澤銀座通',
+                note: '移動至商圈',
+                images: [],
+                links: [
+                  {text: 'Google 路線', url: 'https://maps.app.goo.gl/HizNjpDfx5NXb9TU9'},
+                  {text: '舊輕井澤銀座通', url: 'https://maps.app.goo.gl/CzBF9eBNxC4m5xs79'}
+                ]
+              },
+              {
+                time: '14:17 - 16:47',
+                type: 'shopping',
+                title: '舊輕井澤銀座通 逛街',
+                note: '',
+                images: [],
+                links: [
+                  {text: 'みっふぃー森のきっちん miffy', url: 'https://maps.app.goo.gl/qAZV5hSmsKnw4Cy86'},
+                  {text: 'Mikado Coffee', url: 'https://maps.app.goo.gl/MP5FJvCyS9BcJsfx8'},
+                  {text: 'COUNT INDIGO 本通店', url: 'https://maps.app.goo.gl/XCRBYrY7A3rMobSZ6'},
+                  {text: '聖保羅天主教堂', url: 'https://maps.app.goo.gl/ZSmjrGAFhoX7axbt8'}
+                ]
+              },
+              {
+                time: '16:47 - 16:56',
+                type: 'transport',
+                title: '舊輕井澤銀座通 ➔ 輕井澤站',
+                note: '公車或搭車移動',
+                images: [],
+                links: [
+                  {text: 'Google 路線 16:31-16:39', url: 'https://maps.app.goo.gl/kZmgeSrggTFUskgs5'},
+                  {text: 'Google 路線 16:47-16:56', url: 'https://maps.app.goo.gl/HE5AuSGeiWdddSWcA'},
+                  {text: '輕井澤站', url: 'https://maps.app.goo.gl/JrYVYuGmGjRNJVZ89'}
+                ]
+              },
+              {
+                time: '16:56 - 20:00',
+                type: 'shopping',
+                title: '輕井澤 Prince Shopping Plaza / T-SITE',
+                note: 'だし尾粂 軽井沢店 (營業至 20:00)',
+                images: [],
+                links: [
+                  {text: '軽井沢 T-SITE', url: 'https://maps.app.goo.gl/gjFWGZoyh7EXpzXa9'},
+                  {text: 'だし尾粂 軽井沢店', url: 'https://maps.app.goo.gl/WEBHEQ1qaCPtASLX6'},
+                  {text: '【官方】Prince Shopping Plaza', url: 'https://www.karuizawa-psp.jp/tw'}
+                ]
+              },
+              {
+                time: '20:30 - 22:00',
+                type: 'food',
+                title: '晚餐：焼肉みひろちゃん (Yakiniku Mihiro)',
+                note: '已完成 BOOKING 預約',
+                images: [],
+                links: [
+                  {text: 'BOOKING 預約', url: 'https://drive.google.com/file/d/1mKqmJg5B2yBJuNMVl0qKYjRKoDUQAGEx/view?usp=drive_link'},
+                  {text: '焼肉みひろちゃん', url: 'https://maps.app.goo.gl/hHJ5r3yiYKiYBiaV6'}
+                ]
+              },
+              {
+                time: '22:00 - 22:38',
+                type: 'transport',
+                title: '返回 BEB5 輕井澤',
+                note: '於輕井澤駅南口搭乘 TAXI 返回',
+                images: [],
+                links: [
+                  {text: 'Google 路線', url: 'https://maps.app.goo.gl/nuk3NY3Wbmqrziwh6'},
+                  {text: 'Or 軽井沢駅南口タクシー乗り場', url: 'https://maps.app.goo.gl/A4jmBpU1HY3RvVEh6'},
+                  { text: '星野度假村 BEB5 輕井澤', url: 'https://maps.app.goo.gl/ZyWsZBgcGpAZU4Ug9' }
+                ]
+              }
+            ]
+          },
+          {
+            id: 4,
+            title: '輕井澤 ➔ 草津溫泉',
+            date: '10/20 (TUE)',
+            items: [
+              {
+                time: '08:00 - 09:00',
+                type: 'food',
+                title: '早餐：丸山咖啡 (Maruyama Coffee)',
+                note: '享用精品咖啡與早餐',
+                images: [],
+                links: [
+                  { text: '丸山咖啡', url: 'https://maps.app.goo.gl/31a2Hd1MFM54bYhu9' }
+                ]
+              },
+              {
+                time: '09:00 - 09:45',
+                type: 'spot',
+                title: '星野溫泉 蜻蜓之湯',
+                note: '退房前晨泡',
+                images: [],
+                links: [
+                  { text: '蜻蜓之湯', url: 'https://maps.app.goo.gl/7o5RLXJZQRUpEmip7' }
+                ]
+              },
+              {
+                time: '09:45 - 11:15',
+                type: 'hotel',
+                title: 'shuttle bus ➔ 休息 ➔Check out BEB5 輕井澤 ➔ 湯川',
+                note: '11:00 前完成退房，步行至湯川站 搭乘11:35巴士',
+                images: [],
+                links: [
+                  { text: '湯川站', url: 'https://maps.app.goo.gl/pUPBnpNqjrunTm3x6' }
+                ]
+              },
+              {
+                time: '11:35 - 13:38',
+                type: 'transport',
+                title: '湯川 ➔ 輕井澤 ➔ 草津温泉 (草輕交通巴士)',
+                note: '12:20 搭乘 01 急行草輕線巴士',
+                images: [],
+                links: [
+                  { text: 'BEB5 ➔ 輕井澤 ➔ 草津', url: 'https://maps.app.goo.gl/m8pdmgRTSWARfEFx9' },
+                  { text: '草軽交通バス時刻表', url: 'https://www.kkkg.co.jp/bus/timetable/kusakaru_sen.pdf?v=20260401' }
+                ]
+              },
+              {
+                time: '13:38 - 14:00',
+                type: 'hotel',
+                title: '草津温泉 湯畑泉水 寄放行李',
+                note: '放置大件行李',
+                images: [],
+                links: [
+                  { text: '湯畑泉水', url: 'https://maps.app.goo.gl/QvdXnNKCfVUpBWYp8' },
+                  { text: 'BOOKING', url: 'https://drive.google.com/file/d/1CwabzbXge6kxeUiV4l5ftvYNcgerf0NZ/view?usp=drive_link' }
+                ]
+              },
+              {
+                time: '14:00 - 15:00',
+                type: 'food',
+                title: '午餐：釜飯 滿天 草津湯畑',
+                note: '貳番館 (營業時間 11:00–15:00)',
+                images: [],
+                links: [
+                  { text: '釜飯 滿天 草津湯畑', url: 'https://maps.app.goo.gl/HEb78ZevcDNjAW667' }
+                ]
+              },
+              {
+                time: '15:00 - 15:30',
+                type: 'hotel',
+                title: 'Check-in: 草津温泉 湯畑泉水',
+                note: '正式入住手續',
+                images: [],
+                links: [
+                  { text: '湯畑泉水', url: 'https://maps.app.goo.gl/QvdXnNKCfVUpBWYp8' },
+                  { text: 'BOOKING', url: 'https://drive.google.com/file/d/1CwabzbXge6kxeUiV4l5ftvYNcgerf0NZ/view?usp=drive_link' }
+                ]
+              },
+              {
+                time: '15:30 - 20:30',
+                type: 'spot',
+                title: '草津溫泉 湯畑 & 西之河原公園 散策',
+                note: 'Super Mokube 超級市場 (營業至 20:00)',
+                images: [],
+                links: [
+                  { text: '草津溫泉湯畑', url: 'https://maps.app.goo.gl/RsYU4X8Ku2iqqbkH7' },
+                  { text: '西之河原公園', url: 'https://maps.app.goo.gl/6yiFdVjPkwynpsZe7' },
+                  { text: 'Super Mokube 超級市場', url: 'https://maps.app.goo.gl/XfgTKr5S6JqF31X98' }
+                ]
+              },
+              {
+                time: '20:30 - 22:00',
+                type: 'food',
+                title: '晚餐：和牛壽喜燒 Soshiji 草津店',
+                note: '厚切和牛壽喜燒 | 已完成預約',
+                images: [],
+                links: [
+                  { text: '和牛すき焼 そしじ', url: 'https://maps.app.goo.gl/kGio7tRLnZErvGQQ7' },
+                  { text: 'BOOKING', url: 'https://drive.google.com/file/d/1SOscSRJmh21iDti-7mhiUgckOCfacPTQ/view?usp=drive_link' }
+                ]
+              }
+            ]
+          },
+          {
+            id: 5,
+            title: '草津 ➔ 東京麻布台',
+            date: '10/21 (WED)',
+            items: [
+              {
+                time: '09:00 - 10:00',
+                type: 'food',
+                title: '早餐：Lucky Bagel',
+                note: '草津人氣貝果店 營業時間 09:00–17:00',
+                images: [],
+                links: [
+                  { text: 'Lucky Bagel', url: 'https://maps.app.goo.gl/h2gKYZYYqefdEVaz5' }
+                ]
+              },
+              {
+                time: '10:00 - 11:30',
+                type: 'spot',
+                title: '草津湯畑最後巡禮',
+                note: '',
+                images: [],
+                links: []
+              },
+              {
+                time: '11:30 - 12:55',
+                type: 'transport',
+                title: '草津温泉 ➔ 輕井澤 (草輕交通巴士)',
+                note: '巴士移動至輕井澤',
+                images: [],
+                links: [
+                  { text: 'Google 路線', url: 'https://maps.app.goo.gl/EQrNkuDp4VcUAXMp7' },
+                  { text: '草軽交通バス時刻表', url: 'https://www.kkkg.co.jp/bus/timetable/kusakaru_sen.pdf?v=20260401' }
+                ]
+              },
+              {
+                time: '12:55 - 13:57',
+                type: 'food',
+                title: '輕井澤站 買午餐',
+                note: '準備新幹線上用餐',
+                images: [],
+                links: [
+
+                ]
+              },
+              {
+                time: '13:57 - 15:42',
+                type: 'transport',
+                title: '輕井澤 ➔ 京成里士滿酒店東京押上',
+                note: '搭乘新幹線與鐵道返回東京押上',
+                images: [],
+                links: [
+                  { text: 'Google 路線', url: 'https://maps.app.goo.gl/R1rVRwbXQJRHudCv7' }
+                ]
+              },
+              {
+                time: '15:42 - 16:15',
+                type: 'hotel',
+                title: 'Check-in: 京成里士滿酒店東京押上',
+                note: 'Tel: +81 3-6658-5991',
+                images: [],
+                links: [
+                  { text: '飯店訂房憑證', url: 'https://drive.google.com/file/d/1QQPJi3-BBa6cNrHL7cH6dhaHF08gX_kf/view?usp=drive_link'},
+                  { text: 'Google 路線', url: 'https://maps.app.goo.gl/R1rVRwbXQJRHudCv7' },
+                  {text: '京成里士滿酒店東京押上', url: 'https://maps.app.goo.gl/iDmcwv6My1jsM8rS8'}
+                ]
+              },
+              {
+                time: '16:18 - 16:50',
+                type: 'transport',
+                title: '京成里士滿酒店東京押上 ➔ 神谷町站',
+                note: '移動至麻布台 Hills',
+                images: [],
+                links: [
+                  {text: 'Google 路線', url: ' https://maps.app.goo.gl/yzuJX6hnGPUB9Qgx6'},
+                  {text: '麻布台 Hills', url: 'https://maps.app.goo.gl/DX7j7A8YQ4MMypB39'}
+                ]
+              },
+              {
+                time: '17:00 - 20:00',
+                type: 'spot',
+                title: 'teamLab Borderless 數位藝術美術館',
+                note: '麻布台 Hills | 請提前準備門票 QR Code',
+                images: [],
+                links: [
+                  { text: 'teamLab 門票 QR Code', url: 'https://borderless-azabudai.ticket.teamlab.art/tickets/#/id/t-EkPwi9wcfS4-DxxZoiEspdIE2p5Bct8Qu3qIoPhgiDf2uuTGfxNdqNsKBPmZVn?lang=zh-hant' },
+                  {text: 'teamLab Borderless', url: 'https://maps.app.goo.gl/q1xC2y5ctRZmigR8A'}
+                ]
+              },
+              {
+                time: '20:20 - 22:20',
+                type: 'food',
+                title: '晚餐：SUMI',
+                note: '已完成 BOOKING 預約',
+                images: [],
+                links: [
+                  {text: 'SUMI', url: 'https://maps.app.goo.gl/bJQTD9MXAd2YGquV9'},
+                  {text: 'SUMI預約', url: 'https://drive.google.com/file/d/1On8jcgKE3vzLO27A9VimHYYP2o-B5k0_/view?usp=drive_link'}
+                ]
+              },
+              {
+                time: '22:24 - 23:00',
+                type: 'transport',
+                title: 'SUMI ➔ 京成里士滿酒店東京押上',
+                note: '返回飯店休息',
+                images: [],
+                links: [
+                  {text: 'Google 路線', url: 'https://maps.app.goo.gl/gdpoPUDbKf49z5fy5'},
+                  {text: '京成里士滿酒店東京押上', url: 'https://maps.app.goo.gl/iDmcwv6My1jsM8rS8'}
+                ]
+              }
+            ]
+          },
+          {
+            id: 6,
+            title: '御茶之水 & 新宿',
+            date: '10/22 (THU)',
+            items: [
+              {
+                time: '11:03 - 11:22',
+                type: 'transport',
+                title: '京成里士滿酒店 ➔ 御茶之水',
+                note: '電車移動 (~30 mins)',
+                images: [],
+                links: [
+                  {text: 'Google 路線', url: 'https://maps.app.goo.gl/CYxiRSubvgH8H8eW8'}
+                ]
+              },
+              {
+                time: '11:22 - 13:00',
+                type: 'food',
+                title: '午餐：印度屋 (Indo-ya Wateras store)',
+                note: '辣味料理專門店 御茶水',
+                images: [],
+                links: [
+                  {text: '印度屋 (Indo-ya Wateras store)', url: 'https://maps.app.goo.gl/gNTqhGUsKVyyPnLc7'}
+                ]
+              },
+              {
+                time: '13:00 - 14:00',
+                type: 'food',
+                title: 'Sarutahiko Coffee 猿田彥珈琲',
+                note: '',
+                images: [],
+                links: [
+                  {text: '猿田彥珈琲', url: 'https://maps.app.goo.gl/jD3kmebkzzfYeNJs8'}
+                ]
+              },
+              {
+                time: '14:00 - 14:20',
+                type: 'transport',
+                title: '御茶之水 ➔ 新宿',
+                note: '中央線快速移動 (~20 mins)',
+                images: [],
+                links: [
+                  {text: 'Google 路線', url: 'https://maps.app.goo.gl/sAkhiAMFBSzChk6n7'}
+                ]
+              },
+              {
+                time: '13:20 - 19:30',
+                type: 'shopping',
+                title: '新宿大採買 Shopping Day',
+                note: '',
+                images: [],
+                links: [
+                  {text: 'sanrio house ルミネ', url: 'https://maps.app.goo.gl/J7ox8pBuvkfTGyoy5'} ,
+                  {text: 'LUMINE EST Shinjuku', url: 'https://maps.app.goo.gl/ipkfPHWoFe4QapNt7'} ,
+                  {text: 'FREAKs STORE', url: 'https://maps.app.goo.gl/4DTpcv4qttZ5hX8m9'} ,
+                  {text: '新宿丸井 男士館', url: 'https://maps.app.goo.gl/ma7cRDoNnjPGjKFC9'}
+                ]
+              },
+              {
+                time: '20:00 - 22:00',
+                type: 'food',
+                title: '晚餐：Ginza Happo - Shinjuku (銀座八芳)',
+                note: '已完成 BOOKING 預約',
+                images: [],
+                links: [
+                  {text: '銀座八芳', url: 'https://maps.app.goo.gl/Ct54dvZYazqvDGU57'} ,
+                  {text: 'BOOKING', url: 'https://drive.google.com/file/d/1ZOec8X-IiQrRiAPGDLJGlBxojsaaDr0v/view?usp=drive_link'}
+                ]
+              }
+            ]
+          },
+          {
+            id: 7,
+            title: '淺草 & 秋葉原',
+            date: '10/23 (FRI)',
+            items: [
+              {
+                time: '09:00 - 10:00',
+                type: 'food',
+                title: '早餐 / 咖啡：ENRICH',
+                note: '星期五營業時間：09:00–16:00',
+                images: [],
+                links: [
+                  {text: 'ENRICH', url: 'https://maps.app.goo.gl/2PcHCvD2c1qN7SXK9'}
+                ]
+              },
+              {
+                time: '10:00 - 10:30',
+                type: 'transport',
+                title: 'ENRICH ➔ 合羽橋道具街',
+                note: '電車 (~30 mins)',
+                images: [],
+                links: [
+                  {text: 'Google 路線', url: 'https://maps.app.goo.gl/UNfAyF1zJyBehhdB7'}
+                ]
+              },
+              {
+                time: '10:30 - 13:00',
+                type: 'shopping',
+                title: '合羽橋道具街 (Kappabashi)',
+                note: '日式餐具與廚具選購',
+                images: [],
+                links: [
+                  {text: '合羽橋道具街', url: 'https://maps.app.goo.gl/tbbEKsCWZuykkDHa7'}
+                ]
+              },
+              {
+                time: '13:30 - 15:00',
+                type: 'food',
+                title: '午餐：牛たんの檸檬 淺草店',
+                note: '極厚切牛舌 | 已完成 BOOKING 預約',
+                images: [],
+                links: [
+                  {text: '牛たんの檸檬', url: 'https://maps.app.goo.gl/CHAwrdZjLyJizmwWA'},
+                  {text: 'BOOKING', url: 'https://drive.google.com/file/d/1toYW6uxBzfaVzZioEmz_Y0ijdbiOj2Ag/view?usp=drive_link'}
+                ]
+              },
+              {
+                time: '15:00 - 16:30',
+                type: 'shopping',
+                title: '淺草 逛街 Shopping',
+                note: '平價服飾採買',
+                images: [],
+                links: [
+                  {text: 'Shimamura', url: 'https://maps.app.goo.gl/Xu13EexesPjEqxS86'}
+                ]
+              },
+              {
+                time: '16:30 - 16:45',
+                type: 'transport',
+                title: '淺草 ➔ 秋葉原',
+                note: 'TX 筑波快線或電車 (~13 mins)',
+                images: [],
+                links: [
+                  {text: 'Google 路線', url: 'https://maps.app.goo.gl/6zLLfMCqa13UBNia7'}
+                ]
+              },
+              {
+                time: '16:45 - 20:30',
+                type: 'shopping',
+                title: '秋葉原 動漫動線巡禮',
+                note: '',
+                images: [],
+                links: [
+                  {text: '秋葉原 Radio 會館', url: 'https://maps.app.goo.gl/uferEHgajqpteiKK9'},
+                  {text: 'Animate 秋葉原總店', url: 'https://maps.app.goo.gl/jxB8oWPpEguRpsXV7'}
+                ]
+              }
+            ]
+          },
+          {
+            id: 8,
+            title: '晴空塔 ➔ 歸賦香港',
+            date: '10/24 (SAT)',
+            items: [
+              {
+                time: '10:00 - 16:00',
+                type: 'shopping',
+                title: '東京晴空塔 Solamachi 最後採買',
+                note: '寄放行李、最後伴手禮採購',
+                images: [],
+                links: []
+              },
+              {
+                time: '15:09 - 18:11',
+                type: 'transport',
+                title: '押上 ➔ 成田國際機場 第二航廈',
+                note: '搭乘京成 Access 特急前往機場',
+                images: [],
+                links: [
+                  {text: '秋葉原 Radio 會館', url: 'https://maps.app.goo.gl/Zhnap14N4oqfoqyR6'}
+                ]
+              },
+              {
+                time: '20:40 - 00:35',
+                type: 'flight',
+                title: '返港航班 - UO870 (NRT ➔ HKG)',
+                note: '飛行時間︰4h 55m | 2 x 32 kg 寄艙行李\n訂單編號︰ACKP3X | 提前選座 : 12A, 12B',
+                images: [],
+                links: [
+                  {text: '訂單', url: 'https://drive.google.com/file/d/17-Q8CG27voUjCPIqial0flCdCCwK6Xtg/view?usp=drive_link'}
+                ]
+              }
+            ]
+          }
+        ]);
+
+        const currentDay = computed(() => itineraryData.value[activeDayIndex.value]);
+
+        const selectDay = (index) => {
+          activeDayIndex.value = index;
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+
+        const formatTime = (timeStr) => {
+          if (!timeStr) return { primary: '全天' };
+          const parts = timeStr.split('-').map(s => s.trim());
+          if (parts.length === 2) {
+            return { primary: parts[0], secondary: '➔ ' + parts[1] };
+          }
+          return { primary: timeStr };
+        };
+
+        const getBadgeConfig = (type) => {
+          switch (type) {
+            case 'flight':
+              return { label: '航班', badgeStyle: 'bg-purple-500/10 text-purple-400 border-purple-500/30', icon: 'fa-solid fa-plane' };
+            case 'transport':
+              return { label: '交通', badgeStyle: 'bg-blue-500/10 text-blue-400 border-blue-500/30', icon: 'fa-solid fa-train' };
+            case 'hotel':
+              return { label: '住宿', badgeStyle: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30', icon: 'fa-solid fa-bed' };
+            case 'food':
+              return { label: '美食', badgeStyle: 'bg-amber-500/10 text-amber-400 border-amber-500/30', icon: 'fa-solid fa-utensils' };
+            case 'shopping':
+              return { label: '購物', badgeStyle: 'bg-pink-500/10 text-pink-400 border-pink-500/30', icon: 'fa-solid fa-bag-shopping' };
+            case 'spot':
+            default:
+              return { label: '景點', badgeStyle: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30', icon: 'fa-solid fa-camera' };
+          }
+        };
+
+        const openModal = (imgUrl) => {
+          modalImage.value = imgUrl;
+        };
+
+        const closeModal = () => {
+          modalImage.value = null;
+        };
+
+        onMounted(() => {
+          window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt.value = e;
+          });
+        });
+
+        const installPWA = () => {
+          if (deferredPrompt.value) {
+            deferredPrompt.value.prompt();
+            deferredPrompt.value.userChoice.then((choiceResult) => {
+              if (choiceResult.outcome === 'accepted') {
+                deferredPrompt.value = null;
+              }
+            });
+          }
+        };
+
+        return {
+          activeDayIndex,
+          itineraryData,
+          currentDay,
+          selectDay,
+          formatTime,
+          getBadgeConfig,
+          modalImage,
+          openModal,
+          closeModal,
+          deferredPrompt,
+          installPWA
+        };
+      }
+    }).mount('#app');
+
+    // Service Worker 離線快取註冊
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        const swCode = `
+          const CACHE_NAME = 'tokyo-trip-v5';
+          self.addEventListener('install', e => {
+            e.waitUntil(
+              caches.open(CACHE_NAME).then(cache => cache.addAll(['./']))
+            );
+          });
+          self.addEventListener('fetch', e => {
+            e.respondWith(
+              caches.match(e.request).then(response => response || fetch(e.request))
+            );
+          });
+        `;
+        const blob = new Blob([swCode], { type: 'text/javascript' });
+        const swUrl = URL.createObjectURL(blob);
+        navigator.serviceWorker.register(swUrl).catch(err => console.log('SW setup failed', err));
+      });
+    }
+  </script>
+</body>
+</html>
